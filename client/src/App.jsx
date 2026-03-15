@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { DataProvider } from './context/DataContext'
 import BottomNav from './components/BottomNav'
 import Categories from './pages/Categories'
 import Transactions from './pages/Transactions'
@@ -7,7 +8,7 @@ import SettingsPage from './pages/SettingsPage'
 
 export default function App() {
   return (
-    <>
+    <DataProvider>
       <Routes>
         <Route path="/" element={<Categories />} />
         <Route path="/transactions" element={<Transactions />} />
@@ -15,6 +16,6 @@ export default function App() {
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
       <BottomNav />
-    </>
+    </DataProvider>
   )
 }
