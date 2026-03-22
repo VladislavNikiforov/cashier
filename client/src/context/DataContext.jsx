@@ -22,9 +22,14 @@ export function DataProvider({ children }) {
 
   useEffect(() => {
     (async () => {
-      await data.seedDefaults();
-      await reload();
-      setLoading(false);
+      try {
+        await data.seedDefaults();
+        await reload();
+      } catch (err) {
+        console.error('Init error:', err);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [reload]);
 

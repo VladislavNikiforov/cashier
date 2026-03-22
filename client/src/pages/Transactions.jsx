@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Search, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, Trash2, Plus } from 'lucide-react'
+import AddTransactionModal from '../components/AddTransactionModal'
 import { useData } from '../context/DataContext'
 
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
@@ -27,6 +28,7 @@ export default function Transactions() {
   const [txns, setTxns] = useState([])
   const [search, setSearch] = useState('')
   const [showSearch, setShowSearch] = useState(false)
+  const [showModal, setShowModal] = useState(false)
 
   const from = `${year}-${String(month + 1).padStart(2, '0')}-01`
   const to = `${year}-${String(month + 1).padStart(2, '0')}-${new Date(year, month + 1, 0).getDate()}`
@@ -118,6 +120,14 @@ export default function Transactions() {
           )
         })}
       </div>
+
+      <button onClick={() => setShowModal(true)}
+        className="fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
+        style={{ background: 'var(--accent)' }}>
+        <Plus size={28} color="white" />
+      </button>
+
+      <AddTransactionModal open={showModal} onClose={() => { setShowModal(false); getTransactionsForPeriod(from, to).then(setTxns) }} />
     </div>
   )
 }

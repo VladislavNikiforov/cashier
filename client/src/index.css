@@ -31,8 +31,11 @@ html, body, #root {
 
 body {
   overflow-x: hidden;
-  user-select: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+button, a, input, select, textarea {
+  touch-action: manipulation;
 }
 
 #root {
