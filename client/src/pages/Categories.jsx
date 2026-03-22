@@ -1,18 +1,18 @@
 import { useState, useEffect, useMemo } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { Plus, ChevronLeft, ChevronRight, TrendingDown, TrendingUp } from 'lucide-react'
-import AddTransactionModal from '../components/AddTransactionModal'
+import { ChevronLeft, ChevronRight, TrendingDown, TrendingUp } from 'lucide-react'
+import TransactionEntry from '../components/TransactionEntry'
 import { useData } from '../context/DataContext'
 
 const COLORS = ['#4f8cff', '#ff6b6b', '#ffd93d', '#6bcb77', '#a66cff', '#ff922b', '#20c997', '#e599f7', '#74c0fc', '#f783ac', '#ffe066', '#63e6be']
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
 
 export default function Categories() {
-  const { getSummaryForPeriod, loading } = useData()
+  const { getSummaryForPeriod, categories, accounts, loading } = useData()
   const [mode, setMode] = useState('expense')
   const [month, setMonth] = useState(() => new Date().getMonth())
   const [year, setYear] = useState(() => new Date().getFullYear())
-  const [showModal, setShowModal] = useState(false)
+  const [selectedCat, setSelectedCat] = useState(null)
   const [summary, setSummary] = useState([])
 
   const from = `${year}-${String(month + 1).padStart(2, '0')}-01`
@@ -22,8 +22,20 @@ export default function Categories() {
     getSummaryForPeriod(from, to).then(setSummary)
   }, [from, to, getSummaryForPeriod, loading])
 
-  const filtered = useMemo(() => summary.filter(s => s.type === mode), [summary, mode])
-  const total = useMemo(() => filtered.reduce((s, c) => s + Math.abs(c.total), 0), [filtered])
+  const filteredCats = useMemo(() => categories.filter(c => c.type === mode), [categories, mode])
+  const summaryMap = useMemo(() => {
+    const m = {}
+    for (const s of summary) m[s.categoryId] = s
+    return m
+  }, [summary])
+
+  const total = useMemo(() => {
+    return summary.filter(s => s.type === mode).reduce((s, c) => s + Math.abs(c.total), 0)
+  }, [summary, mode])
+
+  const chartData = useMemo(() => {
+    return summary.filter(s => s.type === mode).map(c => ({ ...c, value: Math.abs(c.total) }))
+  }, [summary, mode])
 
   const prevMonth = () => {
     if (month === 0) { setMonth(11); setYear(y => y - 1) }
@@ -34,84 +46,130 @@ export default function Categories() {
     else setMonth(m => m + 1)
   }
 
-  const chartData = filtered.map(c => ({ ...c, value: Math.abs(c.total) }))
+  const account = accounts[0]
+
+  // Split categories: top row, left, right, bottom row
+  const topCats = filteredCats.slice(0, 4)
+  const leftCats = filteredCats.slice(4, 6)
+  const rightCats = filteredCats.slice(6, 8)
+  const bottomCats = filteredCats.slice(8, 12)
 
   return (
-    <div className="flex flex-col flex-1 px-4 pt-4 pb-20">
-      {/* Mode toggle */}
-      <div className="flex gap-2 mb-4">
-        <button onClick={() => setMode('expense')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${mode === 'expense' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-card)] text-[var(--text-secondary)]'}`}>
-          <TrendingDown size={16} /> Расходы
-        </button>
-        <button onClick={() => setMode('income')}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors ${mode === 'income' ? 'bg-[var(--success)] text-white' : 'bg-[var(--bg-card)] text-[var(--text-secondary)]'}`}>
-          <TrendingUp size={16} /> Доходы
-        </button>
+    <div className="flex flex-col flex-1 pb-20">
+      {/* Account bar */}
+      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+        <div className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ border: '1.5px solid var(--text-secondary)' }}>
+          <span className="text-sm">👤</span>
+        </div>
+        <div className="text-center">
+          <div className="text-xs text-[var(--text-secondary)]">{account?.name || 'Счёт'}</div>
+          <div className="text-lg font-bold">€ {parseFloat(account?.balance || 0).toFixed(2)}</div>
+        </div>
+        <div className="w-9" />
       </div>
 
-      {/* Month selector */}
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={prevMonth} className="p-2 text-[var(--text-secondary)]"><ChevronLeft size={20} /></button>
-        <span className="text-sm font-medium">{MONTHS[month]} {year}</span>
-        <button onClick={nextMonth} className="p-2 text-[var(--text-secondary)]"><ChevronRight size={20} /></button>
-      </div>
-
-      {/* Donut chart */}
-      <div className="relative mx-auto w-56 h-56 mb-6">
-        {chartData.length > 0 ? (
-          <ResponsiveContainer>
-            <PieChart>
-              <Pie data={chartData} dataKey="value" cx="50%" cy="50%"
-                innerRadius={65} outerRadius={90} paddingAngle={2} strokeWidth={0}>
-                {chartData.map((item, i) => (
-                  <Cell key={i} fill={item.categoryColor || COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="w-[180px] h-[180px] rounded-full border-4 border-[var(--border)] flex items-center justify-center">
-              <span className="text-sm text-[var(--text-secondary)]">Нет данных</span>
-            </div>
-          </div>
-        )}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-2xl font-bold">{total.toFixed(2)}</span>
-          <span className="text-xs text-[var(--text-secondary)]">EUR</span>
+      {/* Mode + Month */}
+      <div className="flex items-center justify-between px-4 mb-2">
+        <button onClick={() => setMode(m => m === 'expense' ? 'income' : 'expense')}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+          style={{ background: 'var(--bg-card)' }}>
+          {mode === 'expense' ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
+          {mode === 'expense' ? 'Расходы' : 'Доходы'}
+        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={prevMonth} className="p-1 text-[var(--text-secondary)]"><ChevronLeft size={18} /></button>
+          <span className="text-xs font-medium min-w-[100px] text-center">{MONTHS[month]} {year}</span>
+          <button onClick={nextMonth} className="p-1 text-[var(--text-secondary)]"><ChevronRight size={18} /></button>
         </div>
       </div>
 
-      {/* Category list */}
-      <div className="flex flex-col gap-2">
-        {filtered.map((cat, i) => (
-          <div key={cat.categoryId} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'var(--bg-card)' }}>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg"
-              style={{ background: (cat.categoryColor || COLORS[i % COLORS.length]) + '22', border: `2px solid ${cat.categoryColor || COLORS[i % COLORS.length]}` }}>
-              {cat.categoryIcon || '❓'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">{cat.categoryName}</div>
-              {total > 0 && (
-                <div className="h-1.5 mt-1 rounded-full overflow-hidden" style={{ background: 'var(--bg-input)' }}>
-                  <div className="h-full rounded-full transition-all" style={{ width: `${(Math.abs(cat.total) / total * 100)}%`, background: cat.categoryColor || COLORS[i % COLORS.length] }} />
-                </div>
-              )}
-            </div>
-            <div className="text-sm font-medium whitespace-nowrap">{Math.abs(cat.total).toFixed(2)} €</div>
+      {/* Category grid around donut */}
+      <div className="px-2 flex-1">
+        {/* Top row: 4 categories */}
+        <div className="grid grid-cols-4 gap-1 mb-1">
+          {topCats.map((cat, i) => (
+            <CatButton key={cat.id} cat={cat} spent={summaryMap[cat.id]?.total} color={cat.color || COLORS[i]}
+              onTap={() => setSelectedCat(cat)} />
+          ))}
+        </div>
+
+        {/* Middle: left cats + donut + right cats */}
+        <div className="flex items-center gap-1 mb-1">
+          {/* Left column */}
+          <div className="flex flex-col gap-1 w-[72px]">
+            {leftCats.map((cat, i) => (
+              <CatButton key={cat.id} cat={cat} spent={summaryMap[cat.id]?.total} color={cat.color || COLORS[4 + i]}
+                onTap={() => setSelectedCat(cat)} />
+            ))}
           </div>
-        ))}
+
+          {/* Donut */}
+          <div className="flex-1 relative aspect-square">
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={chartData} dataKey="value" cx="50%" cy="50%"
+                    innerRadius="55%" outerRadius="80%" paddingAngle={2} strokeWidth={0}>
+                    {chartData.map((item, i) => (
+                      <Cell key={i} fill={item.categoryColor || COLORS[i % COLORS.length]} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <div className="w-[75%] aspect-square rounded-full border-4 border-[var(--border)]" />
+              </div>
+            )}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-[10px] text-[var(--text-secondary)]">
+                {mode === 'expense' ? 'Расходы' : 'Доходы'}
+              </span>
+              <span className="text-xl font-bold">€ {total.toFixed(2)}</span>
+            </div>
+          </div>
+
+          {/* Right column */}
+          <div className="flex flex-col gap-1 w-[72px]">
+            {rightCats.map((cat, i) => (
+              <CatButton key={cat.id} cat={cat} spent={summaryMap[cat.id]?.total} color={cat.color || COLORS[6 + i]}
+                onTap={() => setSelectedCat(cat)} />
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom row: 4 categories */}
+        <div className="grid grid-cols-4 gap-1">
+          {bottomCats.map((cat, i) => (
+            <CatButton key={cat.id} cat={cat} spent={summaryMap[cat.id]?.total} color={cat.color || COLORS[8 + i]}
+              onTap={() => setSelectedCat(cat)} />
+          ))}
+        </div>
       </div>
 
-      {/* FAB */}
-      <button onClick={() => setShowModal(true)}
-        className="fixed bottom-20 right-4 w-14 h-14 rounded-full flex items-center justify-center shadow-lg z-40"
-        style={{ background: 'var(--accent)' }}>
-        <Plus size={28} color="white" />
-      </button>
-
-      <AddTransactionModal open={showModal} onClose={() => setShowModal(false)} />
+      <TransactionEntry
+        open={!!selectedCat}
+        category={selectedCat}
+        onClose={() => { setSelectedCat(null); getSummaryForPeriod(from, to).then(setSummary) }}
+      />
     </div>
+  )
+}
+
+function CatButton({ cat, spent, color, onTap }) {
+  const amount = spent ? Math.abs(spent) : 0
+  return (
+    <button onClick={onTap}
+      className="flex flex-col items-center gap-0.5 py-2 px-1 rounded-xl active:scale-95 transition-transform">
+      <span className="text-[10px] text-[var(--text-secondary)] truncate w-full text-center leading-tight">{cat.name}</span>
+      <div className="w-11 h-11 rounded-full flex items-center justify-center text-lg"
+        style={{ background: color + '22', border: `2px solid ${color}` }}>
+        {cat.icon || '❓'}
+      </div>
+      <span className="text-[10px] font-semibold" style={{ color }}>
+        € {amount > 0 ? amount.toFixed(0) : '0'}
+      </span>
+    </button>
   )
 }
