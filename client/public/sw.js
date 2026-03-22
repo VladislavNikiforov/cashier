@@ -1,8 +1,9 @@
 const CACHE_NAME = 'cashier-v1';
+const BASE = '/cashier';
 const STATIC_ASSETS = [
-  '/',
-  '/manifest.json',
-  '/icons/icon.svg',
+  BASE + '/',
+  BASE + '/manifest.json',
+  BASE + '/icons/icon.svg',
 ];
 
 // Install — cache shell
@@ -28,7 +29,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
   // API calls — network only (offline handled by IndexedDB in app)
-  if (url.pathname.startsWith('/api')) return;
+  if (url.pathname.startsWith(BASE + '/api')) return;
 
   // Assets — stale-while-revalidate
   e.respondWith(
